@@ -200,6 +200,8 @@ tr:hover td{background:var(--soft)}
 @keyframes gem{0%,100%{transform:rotateY(0) scale(1)}50%{transform:rotateY(180deg) scale(1.2)}}
 .dnode[data-i=judge].on{border-color:var(--gold)!important}
 @media (prefers-reduced-motion:reduce){.dline.on::after,.dgem{animation:none}}
+.gback{max-width:820px;margin:0 auto 8px;display:flex}
+.gback .btn{border-radius:99px}
 </style>
 </head>
 <body>
@@ -379,11 +381,12 @@ function customs(){return store('ga_custom')||[]}
 /* ============ UI shell ============ */
 function setUI(l){UI=l;try{chatPh()}catch(e){}document.documentElement.lang=l;document.documentElement.dir=l==='ar'?'rtl':'ltr';$('#langbtn').textContent=l==='ar'?'English':'العربية'}
 function toggleUI(){setUI(UI==='ar'?'en':'ar');if(!LOGGED)return loginView();if(G&&G.view&&TAB==='agent'&&G.live)return renderGame();go(TAB)}
-function goHome(){if(G&&G.live&&G.view!=='end'&&!confirm(tr('Leave the current game and go to the main menu?','مغادرة اللعبة الحالية والعودة للقائمة الرئيسية؟')))return;clearTimer();closeModal();if(G){G.live=false;G=null}TAB='agent';home()}
+function goHome(force){if(force!==true&&G&&G.live&&G.view!=='end'){showModal(`<div style="text-align:center"><div class="big">💬</div><h3>${tr('Back to the agent chat?','العودة إلى محادثة الوكيل؟')}</h3><p class="mut">${tr('The current game will end and its progress will be lost.','ستنتهي اللعبة الحالية ويضيع تقدّمها.')}</p></div><div class="row" style="justify-content:center"><button class="btn" onclick="closeModal();goHome(true)">${tr('Leave the game','اترك اللعبة')}</button><button class="btn alt" onclick="closeModal()">${tr('Keep playing','تابع اللعب')}</button></div>`);return}
+ clearTimer();closeModal();toggleSide(false);if(G){G.live=false;G=null}TAB='agent';home()}
 function nav(){const n=$('#nav');document.body.classList.toggle('hasside',!!LOGGED);const mb=$('#menubtn');if(mb)mb.style.display=LOGGED?'':'none';const hb=$('#homebtn');if(hb)hb.style.display=LOGGED?'inline-block':'none';
  if(!LOGGED){n.innerHTML='';$('#sfoot').innerHTML='';return}
  const lk=k=>k&&!can(k)?'<span class="lk">🔒</span>':'';
- const grp=[[tr('Agent','الوكيل'),[['agent','💬',tr('Agent chat','محادثة الوكيل')]]],[tr('Play','اللعب'),[['bank','🏦',tr('Points Bank','بنك النقاط')],['market','🛒',tr('Cards Market','سوق البطاقات')],['genius','🌟',tr('Genius Area','منطقة العباقرة')],['board','🏆',tr('Hall of Fame','لوحة الشرف')],['qbank','📚',tr('Question Bank','بنك الأسئلة'),'bank']]],[tr('Account','الحساب'),[['plans','💎',tr('Plans','الخطط')],['terms','📜',tr('Game Terms','شروط اللعبة')]]]];
+ const inGame=!!(G&&G.live);const grp=[[tr('Agent','الوكيل'),inGame?[['agent','🎮',tr('Back to game','العودة للعبة')],['home','💬',tr('Agent chat','محادثة الوكيل')]]:[['agent','💬',tr('Agent chat','محادثة الوكيل')]]],[tr('Play','اللعب'),[['bank','🏦',tr('Points Bank','بنك النقاط')],['market','🛒',tr('Cards Market','سوق البطاقات')],['genius','🌟',tr('Genius Area','منطقة العباقرة')],['board','🏆',tr('Hall of Fame','لوحة الشرف')],['qbank','📚',tr('Question Bank','بنك الأسئلة'),'bank']]],[tr('Account','الحساب'),[['plans','💎',tr('Plans','الخطط')],['terms','📜',tr('Game Terms','شروط اللعبة')]]]];
  n.innerHTML=grp.map(g=>`<div class="sgrp">${g[0]}</div>`+g[1].map(t=>`<button class="sitem ${TAB===t[0]?'on':''}" onclick="go('${t[0]}')"><span class="si">${t[1]}</span><span>${t[2]}</span>${lk(t[3])}</button>`).join('')).join('');
  const p=PLANS[planIdx()];$('#sfoot').innerHTML=`<div class="planpill"><div class="mut" style="font-size:11px">${tr('Current plan','الباقة الحالية')}</div><b>${p.icon} ${esc(L(p.n))}</b><button class="btn sm" style="width:100%;margin-top:8px" onclick="go('plans')">💎 ${planIdx()<2?tr('See upgrades','شاهد الترقيات'):tr('Plans','الخطط')}</button></div>${isStandalone()?'':`<button class="btn alt sm" style="width:100%;margin-top:8px" onclick="installApp()">📲 ${tr('Install app','ثبّت التطبيق')}</button>`}`}
 function go(t){if(t==='home')return goHome();TAB=t;toggleSide(false);nav();clearTimer();({agent:()=>(G&&G.live?renderGame():home()),bank:bankView,market:marketView,genius:geniusView,qbank:qbView,board:boardView,terms:termsView,plans:plansView})[t]()}
@@ -517,7 +520,7 @@ function pts(p,d,note){const b=p.pts;p.pts=Math.max(0,p.pts+d);ledger(p,p.pts-b,
 function startTurn(){const p=P();p.banNow=p.ban;p.ban=false;G.selVal=null;G.view='pick';G.q=null;renderGame()}
 
 /* ============ game rendering ============ */
-function sb(){const gp=GEN();return `<div class="sb">${G.players.map((p,i)=>{const gc=gp[p.name]||0,pc=Math.min(100,gc/G.gth*100);return `<div class="pl ${G.turn%2===i&&G.view!=='end'?'act':''}"><div class="n"><span>${i?'🟣':'🔵'} ${esc(p.name)}</span><span>${gc>=G.gth?'<span class="badge">🌟 Genius</span>':`🌟 ${gc}/${G.gth}`}</span></div><div class="p" data-v="${p.pts}" data-id="p${i}">${nf(p.pts)}</div><div class="bar"><i data-id="b${i}" data-w="${Math.min(100,p.pts/50)}" style="width:${Math.min(100,p.pts/50)}%"></i></div><div class="mut" style="margin-top:4px">${p.double?'✨x2 ':''}${p.shield?'🛡️ ':''}${p.trap?'🪤 ':''}${p.ban?'⛔⚔️':''}${p.streak>1?'🔥'+p.streak:''}</div></div>`}).join('')}</div>`}
+function sb(){const gp=GEN();return `<div class="gback"><button class="btn alt sm" onclick="goHome()">${UI==='ar'?'›':'‹'} 💬 ${tr('Agent chat','محادثة الوكيل')}</button></div><div class="sb">${G.players.map((p,i)=>{const gc=gp[p.name]||0,pc=Math.min(100,gc/G.gth*100);return `<div class="pl ${G.turn%2===i&&G.view!=='end'?'act':''}"><div class="n"><span>${i?'🟣':'🔵'} ${esc(p.name)}</span><span>${gc>=G.gth?'<span class="badge">🌟 Genius</span>':`🌟 ${gc}/${G.gth}`}</span></div><div class="p" data-v="${p.pts}" data-id="p${i}">${nf(p.pts)}</div><div class="bar"><i data-id="b${i}" data-w="${Math.min(100,p.pts/50)}" style="width:${Math.min(100,p.pts/50)}%"></i></div><div class="mut" style="margin-top:4px">${p.double?'✨x2 ':''}${p.shield?'🛡️ ':''}${p.trap?'🪤 ':''}${p.ban?'⛔⚔️':''}${p.streak>1?'🔥'+p.streak:''}</div></div>`}).join('')}</div>`}
 function cardRow(p,filter,fn){return `<div class="row">${Object.keys(CARDS).filter(k=>filter(CARDS[k])).map(k=>{const c=CARDS[k],n=p.cards[k];return `<button class="crd k-${c.k} ${n?'':'off'}" ${n?'':'disabled'} onclick="${fn}('${k}')" title="${esc(L({en:CDESC[k][0],ar:CDESC[k][1]}))}">${c.icon} ${L(c.n)} <b>${n}</b></button>`}).join('')}</div>`}
 function renderGame(){
  clearTimer();G.live=true;TAB='agent';nav();
@@ -1260,12 +1263,24 @@ async function installApp(){
  showModal(`<div style="text-align:center"><div class="big">📲</div><h3>${tr('Install Gamify Agent','ثبّت Gamify Agent')}</h3></div><p>${ios?tr('Tap the Share button, then "Add to Home Screen".','اضغط زر المشاركة ثم «إضافة إلى الشاشة الرئيسية».'):tr('Open the browser menu (⋮), then "Install app" or "Add to Home screen".','افتح قائمة المتصفح (⋮) ثم «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».')}</p><div class="row" style="justify-content:center"><button class="btn" onclick="closeModal()">OK</button></div>`)}
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
 
+
+/* ============ v8.1: hardware back button ============ */
+try{history.replaceState({ga:0},'');history.pushState({ga:1},'')}catch(e){}
+addEventListener('popstate',()=>{
+ try{history.pushState({ga:1},'')}catch(e){}
+ if(!LOGGED)return;
+ if($('#modal')&&$('#modal').classList.contains('on')){closeModal();return}
+ if(document.body.classList.contains('sideopen')){toggleSide(false);return}
+ if(G&&G.live){goHome();return}
+ if(TAB!=='agent'){go('agent');return}
+});
+
 /* ============ boot ============ */
 setUI(/^ar/i.test(navigator.language||'')?'ar':'en');setTheme(store('ga_theme')||'dark');aiPill();
 const genius0=geniusView;geniusView=function(){genius0();const g=GEN(),th=G?G.gth:(store('ga_gth')||100),names=Object.keys(g).sort();const un=names.map((n,i)=>[n,i]).filter(x=>g[x[0]]>=th);
  const box=document.createElement('div');box.className='card';box.innerHTML=`<h3>🏅 ${tr('Genius challenges','تحديات العباقرة')}</h3>${un.length?un.map(([n,i])=>`<div style="margin:8px 0"><b>${esc(n)}</b><div class="row">${Object.keys(GMODES).map(m=>`<button class="btn alt sm" onclick="gmStart('${m}',${i})">${GMODES[m].icon} ${L(GMODES[m].n)}</button>`).join('')}</div></div>`).join('')+Object.keys(GMODES).map(m=>`<div class="mut">${GMODES[m].icon} ${L(GMODES[m].d)}</div>`).join(''):`<p class="mut">🔒 ${tr('Unlocks when a player reaches the threshold ('+th+' correct answers). Use the demo threshold (5 or 15) in game setup to try it.','تُفتح عندما يصل لاعب إلى الحد ('+th+' إجابة صحيحة). اختر حدّ العرض (٥ أو ١٥) في إعدادات اللعبة لتجربتها.')}</p>`}`;$('#stage').appendChild(box)};
 const market0=marketView;marketView=function(){market0();const box=document.createElement('div');const mine=store('ga_cards')||[];box.innerHTML=`<div class="card"><div class="row"><b style="flex:1">✨ ${tr('Card Designer','مصمم البطاقات')}</b><button class="btn sm" onclick="cardDesigner()">+ ${tr('Design a card','صمّم بطاقة')}</button></div>${mine.map(c=>`<div class="row" style="padding:6px 0"><span>${c.icon} <b>${esc(c.name)}</b> · ${c.price} 🪙 · ${esc(CARDS[c.fx]?L(CARDS[c.fx].n):c.fx)}</span><span class="sp"></span><button class="btn alt sm" onclick="delCard('${c.id}')">🗑</button></div>`).join('')}</div>`;$('#stage').appendChild(box)};
-const goHome1=goHome;goHome=function(){gmStop();return goHome1()};const go1=go;go=function(t){gmStop();return go1(t)};
+const goHome1=goHome;goHome=function(f){gmStop();return goHome1(f)};const go1=go;go=function(t){gmStop();return go1(t)};
 loadUserCards();
 qbInit();
 loginView();
